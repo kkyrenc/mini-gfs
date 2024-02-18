@@ -59,7 +59,7 @@ class Coordinator:
                 address=addr,
                 status=metadata.ChunkServerStatus.INITIAL,
                 remains=0,
-                last_update=time.time()
+                last_update=0
             )
 
             # Initially chunk server is not active, so we won't add it to
