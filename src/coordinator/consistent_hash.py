@@ -1,6 +1,6 @@
 import hashlib
 from typing import Optional
-from coordinator.chunk_server_info import ChunkServerInfo
+from coordinator.metadata import ChunkServerInfo
 
 class ConsistentHash:
     """

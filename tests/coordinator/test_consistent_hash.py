@@ -1,5 +1,5 @@
 from coordinator.consistent_hash import ConsistentHash
-from coordinator.chunk_server_info import ChunkServerInfo, ChunkServerStatus
+from coordinator.metadata import ChunkServerInfo, ChunkServerStatus
 import pytest
 
 class TestConsistentHash:
