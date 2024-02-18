@@ -1,5 +1,5 @@
 import hashlib
-from typing import Optional
+from typing import Optional, List
 from coordinator.metadata import ChunkServerInfo
 
 class ConsistentHash:
@@ -65,26 +65,37 @@ class ConsistentHash:
         if node_to_remove:
             self.nodes.remove(node_to_remove)
 
-    def get_node(self, key: str) -> Optional[ChunkServerInfo]:
+    def get_nodes(self, key: str, replica_count: int = 3) -> List[Optional[ChunkServerInfo]]:
         """
-        Retrieves the corresponding node for a given key from the hash ring.
-        
+        Retrieves the corresponding nodes for a given key from the hash ring,
+        intended for storing replicas of the key.
+
         Args:
-            key (str): The key to find the corresponding node for.
-        
+            key (str): The key to find the corresponding nodes for.
+            replica_count (int): The number of replicas (nodes) to retrieve.
+
         Returns:
-            Optional[ChunkServerInfo]: The node information, or None if no nodes are in the ring.
+            List[Optional[ChunkServerInfo]]: The list of node information for the replicas.
         """
         if not self.ring:
-            return None
-        
+            return [None] * replica_count
+
         key_hash = self.hash(key)
-        # Find the nearest node hash greater than or equal to the key hash
-        nearest_node_hash = min(
-            (hash_val for hash_val in self.ring.keys() if hash_val >= key_hash),
-            default=min(self.ring.keys(), default=None)
-        )
-        
-        if nearest_node_hash is not None:
-            return self.ring[nearest_node_hash]
-        return None
+        nodes = []
+        sorted_hashes = sorted(self.ring.keys())
+
+        for sorted_hash in sorted_hashes:
+            if len(nodes) >= replica_count:
+                break
+            if sorted_hash >= key_hash and self.ring[sorted_hash] not in nodes:
+                nodes.append(self.ring[sorted_hash])
+
+        # If not enough nodes were found due to reaching the end of the ring, wrap around.
+        if len(nodes) < replica_count:
+            for sorted_hash in sorted_hashes:
+                if len(nodes) >= replica_count:
+                    break
+                if self.ring[sorted_hash] not in nodes:
+                    nodes.append(self.ring[sorted_hash])
+
+        return nodes

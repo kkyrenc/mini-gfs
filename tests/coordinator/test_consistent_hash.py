@@ -21,8 +21,17 @@ class TestConsistentHash:
         ch.add_node(node2)
 
         # Try hash some key to one of exist nodes
-        node = ch.get_node("some_key")
-        assert node in [node1, node2], "The returned node should be one of the added nodes."
+        nodes = ch.get_nodes("some_key", 1)
+        assert len(nodes) == 1, "Should only return one node"
+        assert nodes[0] in [node1, node2], "The returned node should be one of the added nodes."
+
+        nodes = ch.get_nodes("some_key", 2)
+        assert len(nodes) == 2, "Should return two node"
+        assert all(node in [node1, node2] for node in nodes), "All returned nodes should be one of the added nodes."
+
+        nodes = ch.get_nodes("some_key", 3)
+        assert len(nodes) == 2, "Should only return two node since we only have two"
+        assert all(node in [node1, node2] for node in nodes), "All returned nodes should be one of the added nodes."
 
     def test_remove_node(self, setup_consistent_hash):
         ch = setup_consistent_hash
@@ -38,5 +47,6 @@ class TestConsistentHash:
         ch.remove_node("10.0.0.1")
 
         # Ensure all key will be mapping to another node after removing
-        remaining_node = ch.get_node("some_key")
-        assert remaining_node == node2, "The remaining node should be node2 after node1 is removed."
+        remaining_nodes = ch.get_nodes("some_key")
+        assert len(remaining_nodes) == 1, "Should only remain one node"
+        assert remaining_nodes[0] == node2, "The remaining node should be node2 after node1 is removed."
