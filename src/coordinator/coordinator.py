@@ -21,18 +21,23 @@ class Coordinator:
         _lock (RLock): Reentrant lock for thread-safe operations.
     """
 
-    def __init__(self, hearbeat_check_interval: int = 10) -> None:
+    def __init__(
+        self,
+        hearbeat_check_interval: int = 10,
+        replica_count: int = 3
+    ) -> None:
         """
         Initializes the Coordinator with a specified heartbeat check interval.
 
         Args:
             hearbeat_check_interval (int): Interval in seconds for heartbeat checks.
+            replica_count (int): Replica count for each chunk.
         """
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self.consistent_hash: ConsistentHash = ConsistentHash()
+        self.replica_count = replica_count
         self.chunk_servers: Dict[str, metadata.ChunkServerInfo] = {}
-        self.file_chunks_mapping: Dict[str, List[str]] = {}
-        self.chunk_locations_mapping: Dict[str, List[str]] = {}
+        self.files: Dict[str, metadata.FileInfo] = {}
         self.heartbeat_check_interval = hearbeat_check_interval
         # Set to False initially since we haven't check heartbet now
         self.is_heartbeat_checking = False
@@ -59,7 +64,8 @@ class Coordinator:
                 address=addr,
                 status=metadata.ChunkServerStatus.INITIAL,
                 remains=0,
-                last_update=0
+                last_update=0,
+                chunks=set()
             )
 
             # Initially chunk server is not active, so we won't add it to

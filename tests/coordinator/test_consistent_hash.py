@@ -5,7 +5,7 @@ import pytest
 class TestConsistentHash:
     @pytest.fixture
     def setup_consistent_hash(self):
-        # 初始化时包含100个虚拟节点
+        # Initially set virtual nodes to 100
         ch = ConsistentHash(virtual_nodes=100)
         return ch
 
