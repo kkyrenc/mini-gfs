@@ -1,6 +1,7 @@
 import hashlib
 from typing import Optional, List
 from coordinator.metadata import ChunkServerInfo
+from sortedcontainers import SortedDict
 
 class ConsistentHash:
     """
@@ -20,7 +21,7 @@ class ConsistentHash:
             virtual_nodes (int): The number of virtual nodes per real node, default is 20.
         """
         self.nodes = set()
-        self.ring = {}
+        self.ring = SortedDict()
         self.virtual_nodes = virtual_nodes
 
     def hash(self, key: str) -> int:
@@ -82,20 +83,26 @@ class ConsistentHash:
 
         key_hash = self.hash(key)
         nodes = []
-        sorted_hashes = sorted(self.ring.keys())
+        unique_physical_nodes = set()
 
-        for sorted_hash in sorted_hashes:
-            if len(nodes) >= replica_count:
+        start_index = self.ring.bisect_right(key_hash)
+        ring_keys = list(self.ring.keys())
+
+        # Adjust the iteration to directly use the ring, minimizing list conversions
+        for i in range(start_index, start_index + len(self.ring) * 2):  # Loop through twice as a safeguard
+            wrapped_index = i % len(ring_keys)
+            node_hash = ring_keys[wrapped_index]
+            node = self.ring[node_hash]
+
+            # Check for unique physical nodes to ensure replicas are not on the same physical node
+            if node.address not in unique_physical_nodes:
+                nodes.append(node)
+                unique_physical_nodes.add(node.address)
+
+            # Break once enough replicas are found
+            if len(nodes) == replica_count:
                 break
-            if sorted_hash >= key_hash and self.ring[sorted_hash] not in nodes:
-                nodes.append(self.ring[sorted_hash])
 
-        # If not enough nodes were found due to reaching the end of the ring, wrap around.
-        if len(nodes) < replica_count:
-            for sorted_hash in sorted_hashes:
-                if len(nodes) >= replica_count:
-                    break
-                if self.ring[sorted_hash] not in nodes:
-                    nodes.append(self.ring[sorted_hash])
-
+        # It's possible that the number of unique physical nodes is less than replica_count,
+        # in which case, we've done our best to distribute replicas across available nodes.
         return nodes
