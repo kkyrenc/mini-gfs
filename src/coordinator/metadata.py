@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, unique
+from typing import List, Set
 
 
 @unique
@@ -10,11 +11,17 @@ class ChunkServerStatus(Enum):
     FAILED = 2
 
 @dataclass
+class ChunkInfo:
+    chunk_handle: str
+    replicas: Set[str]
+
+@dataclass
 class ChunkServerInfo:
     address: str
     status: ChunkServerStatus
     remains: int
     last_update: float
+    chunks: Set[ChunkInfo]
 
     def __hash__(self) -> int:
         return hash(self.address)
@@ -23,3 +30,9 @@ class ChunkServerInfo:
         if isinstance(other, ChunkServerInfo):
             return self.address == other.address
         return False
+
+@dataclass
+class FileInfo:
+    file_name: str
+    version: int
+    chunks: List[ChunkInfo]
