@@ -13,3 +13,11 @@ class ChunkServerInfo:
     address: str
     status: ChunkServerStatus
     remains: int
+
+    def __hash__(self) -> int:
+        return hash(self.address)
+    
+    def __eq__(self, other: 'ChunkServerInfo') -> bool:
+        if isinstance(other, ChunkServerInfo):
+            return self.address == other.address
+        return False
