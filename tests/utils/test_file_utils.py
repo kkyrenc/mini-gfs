@@ -28,3 +28,18 @@ class TestFileUtils:
         # Verify if same as original file
         with open(test_file, 'rb') as original, open(output_file, 'rb') as merged:
             assert original.read() == merged.read(), "The merged file content is not equal to the original file content."
+    
+    def test_delete_files(self, tmp_path):
+        # Create test files
+        test_files = [tmp_path / f"test_file_{i}.txt" for i in range(3)]
+        for file in test_files:
+            generate_test_file(str(file), 1024)  # 每个文件1KB
+
+        # Delete single file
+        FileUtils.delete_files(str(test_files[0]))
+        assert not test_files[0].exists(), "The file should be deleted."
+
+        # Delete other files
+        FileUtils.delete_files([str(file) for file in test_files[1:]])
+        for file in test_files[1:]:
+            assert not file.exists(), "The file should be deleted."

@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Union
 from pathlib import Path
 import logging
+import os
 
 class FileUtils:
     logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ class FileUtils:
 
         Return:
             List: A list contains the names of chunks.
+
         """
         if not isinstance(chunk_size, int):
             cls.logger.error(f"The size of chunk must be an Integer, it is {chunk_size} now")
@@ -61,3 +63,32 @@ class FileUtils:
                     output_file.write(chunk_file.read())
         
         cls.logger.info(f"All chunks have been merged into {output_file_path}")
+
+    @classmethod
+    def delete_files(cls, files: Union[str, List[str]]) -> None:
+        """Remove a singel file or multiple files
+
+        Args:
+            files (str | List[str]): The path(s) of file(s) to be deleted.
+        """
+        if isinstance(files, str):
+            try:
+                os.remove(files)
+                cls.logger.info(f"File {files} has been deleted.")
+            except FileNotFoundError:
+                cls.logger.error(f"File {files} does not exist.")
+            return
+
+        if isinstance(files, list):
+            for file in files:
+                try:
+                    os.remove(file)
+                    cls.logger.info(f"File {file} has been deleted.")
+                except FileNotFoundError:
+                    cls.logger.error(f"File {file} does not exist.")
+            cls.logger.info(f"All files in {file} have been deleted.")
+            return
+        
+        cls.logger.error(f"Input should be a single file path or a list of file paths, current one is {files}")
+        raise ValueError(f"Input should be a single file path or a list of file paths, current one is {files}")
+            
