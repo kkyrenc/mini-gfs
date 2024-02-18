@@ -11,8 +11,10 @@ class TestConsistentHash:
 
     def test_add_and_get_node(self, setup_consistent_hash):
         ch = setup_consistent_hash
-        node1 = ChunkServerInfo(address="10.0.0.1", status=ChunkServerStatus.HEALTHY, remains=1000)
-        node2 = ChunkServerInfo(address="10.0.0.2", status=ChunkServerStatus.HEALTHY, remains=1000)
+        node1 = ChunkServerInfo(
+            address="10.0.0.1", status=ChunkServerStatus.HEALTHY, remains=1000, last_update=0)
+        node2 = ChunkServerInfo(
+            address="10.0.0.2", status=ChunkServerStatus.HEALTHY, remains=1000, last_update=0)
         
         # Add two nodes
         ch.add_node(node1)
@@ -24,8 +26,10 @@ class TestConsistentHash:
 
     def test_remove_node(self, setup_consistent_hash):
         ch = setup_consistent_hash
-        node1 = ChunkServerInfo(address="10.0.0.1", status=ChunkServerStatus.HEALTHY, remains=1000)
-        node2 = ChunkServerInfo(address="10.0.0.2", status=ChunkServerStatus.HEALTHY, remains=1000)
+        node1 = ChunkServerInfo(
+            address="10.0.0.1", status=ChunkServerStatus.HEALTHY, remains=1000, last_update=0)
+        node2 = ChunkServerInfo(
+            address="10.0.0.2", status=ChunkServerStatus.HEALTHY, remains=1000, last_update=0)
         
         ch.add_node(node1)
         ch.add_node(node2)

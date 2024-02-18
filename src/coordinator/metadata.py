@@ -4,6 +4,7 @@ from enum import Enum, unique
 
 @unique
 class ChunkServerStatus(Enum):
+    INITIAL = -1
     HEALTHY = 0
     SUSPECT = 1
     FAILED = 2
@@ -13,6 +14,7 @@ class ChunkServerInfo:
     address: str
     status: ChunkServerStatus
     remains: int
+    last_update: float
 
     def __hash__(self) -> int:
         return hash(self.address)
