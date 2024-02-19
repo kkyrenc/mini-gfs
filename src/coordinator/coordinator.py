@@ -38,6 +38,7 @@ class Coordinator:
         self.replica_count = replica_count
         self.chunk_servers: Dict[str, metadata.ChunkServerInfo] = {}
         self.files: Dict[str, metadata.FileInfo] = {}
+        self.chunk_locations: Dict[str, metadata.ChunkServerInfo] = {}
         self.heartbeat_check_interval = hearbeat_check_interval
         # Set to False initially since we haven't check heartbet now
         self.is_heartbeat_checking = False
@@ -123,7 +124,6 @@ class Coordinator:
         self.logger.info(f"Activating chunk server {chunk_server.address}")
         with self._lock:
             self.consistent_hash.add_node(chunk_server)
-        self.rebalance()
         self.logger.info(f"Chunk server {chunk_server.address} activated.")
 
     def deactivate_chunk_server(self, addr: str) -> None:
@@ -135,14 +135,17 @@ class Coordinator:
         """
         self.logger.info(f"Deactivating chunk server {addr}")
         with self._lock:
-            self.consistent_hash.remove_node(addr)
-        self.rebalance()
+            self.consistent_hash.remove_node(addr, self.redistribute)
         self.logger.info(f"Chunk server {addr} deactivated.")
 
-    def rebalance(self) -> None:
+    def redistribute(
+        self,
+        chunk: metadata.ChunkInfo, 
+        chunks_servers: List[metadata.ChunkServerInfo]
+    ) -> None:
         """
-        Rebalances the distribution of chunks across the available chunk servers.
-        TODO: Implement the rebalance logic.
+        Redistribute chunks across target chunk servers.
+        TODO: Implement the redistribute logic.
         """
         ...
 

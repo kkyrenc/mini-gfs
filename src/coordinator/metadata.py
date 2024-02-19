@@ -13,7 +13,9 @@ class ChunkServerStatus(Enum):
 @dataclass
 class ChunkInfo:
     chunk_handle: str
-    replicas: Set[str]
+
+    def __hash__(self) -> int:
+        return hash(self.chunk_handle)
 
 @dataclass
 class ChunkServerInfo:
