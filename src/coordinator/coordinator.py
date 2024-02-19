@@ -21,11 +21,7 @@ class Coordinator:
         _lock (RLock): Reentrant lock for thread-safe operations.
     """
 
-    def __init__(
-        self,
-        hearbeat_check_interval: int = 10,
-        replica_count: int = 3
-    ) -> None:
+    def __init__(self, hearbeat_check_interval: int = 10) -> None:
         """
         Initializes the Coordinator with a specified heartbeat check interval.
 
@@ -35,10 +31,9 @@ class Coordinator:
         """
         self.logger: logging.Logger = logging.getLogger(self.__class__.__name__)
         self.consistent_hash: ConsistentHash = ConsistentHash()
-        self.replica_count = replica_count
         self.chunk_servers: Dict[str, metadata.ChunkServerInfo] = {}
         self.files: Dict[str, metadata.FileInfo] = {}
-        self.chunk_locations: Dict[str, metadata.ChunkServerInfo] = {}
+        self.chunk_locations: Dict[str, List[metadata.ChunkServerInfo]] = {}
         self.heartbeat_check_interval = hearbeat_check_interval
         # Set to False initially since we haven't check heartbet now
         self.is_heartbeat_checking = False
@@ -123,8 +118,20 @@ class Coordinator:
         """
         self.logger.info(f"Activating chunk server {chunk_server.address}")
         with self._lock:
-            self.consistent_hash.add_node(chunk_server)
+            self.consistent_hash.add_node(chunk_server, self.migrate)
         self.logger.info(f"Chunk server {chunk_server.address} activated.")
+
+    def migrate(
+        self,
+        from_chunk_server: metadata.ChunkServerInfo,
+        to_chunk_server: metadata.ChunkServerInfo,
+        chunk: metadata.ChunkInfo
+    ) -> None:
+        """
+        Migrate chunks from one chunk server to another chunk server.
+        TODO: Implement the migrate logic.
+        """
+        ...
 
     def deactivate_chunk_server(self, addr: str) -> None:
         """
@@ -193,3 +200,54 @@ class Coordinator:
         self.logger.info("Heartbeat check stopping...")
         self.is_heartbeat_checking = False
         self.logger.info("Heartbeat check stopped.")
+
+    def get_chunk_handle(
+        self,
+        file_stem: str,
+        version: int,
+        chunk_idx: int,
+        file_suffix: str
+    ) -> str:
+        return f"{file_stem}_v{version}_chunk{chunk_idx}.{file_suffix}"
+
+    def write_file(
+        self,
+        file_stem: str,
+        file_suffix: str,
+        chunk_num: int,
+        replica: int
+    ) -> Dict[str, str]:
+        file_name = f"{file_stem}.{file_suffix}"
+        self.logger.info(f"Writting file {file_name} with {chunk_num} chunks...")
+        with self._lock:
+            file = self.files.get(
+                file_name,
+                metadata.FileInfo(
+                    file_name=file_name,
+                    version=0,
+                    chunks=[]
+                )
+            )
+            file.version += 1
+
+            self.logger.info(f"File {file_name} version {file.version}")
+            
+            replicas = {}  # Map chunk handle -> list of chunk_server_addr
+            for i in range(chunk_num):
+                chunk_handle = self.get_chunk_handle(file_stem, file.version, i, file_suffix)
+                file.chunks.append(metadata.ChunkInfo(chunk_handle=chunk_handle))
+                
+                chunk_servers = self.consistent_hash.get_nodes(chunk_handle, replica)
+                if len(chunk_servers) < replica:
+                    self.logger.warning(
+                        f"Available chunk servers ({len(chunk_servers)}) is not enough for {replica} replicas.")
+
+                replicas[chunk_handle] = [
+                    chunk_server.address for chunk_server in chunk_servers if chunk_server]
+                self.chunk_locations[chunk_handle] = chunk_servers
+
+            self.files[file_name] = file
+
+        self.logger.info(f"Chunk locations: {replicas}")
+        self.logger.info(f"Writting file {file_name} completed.")
+        return replicas
