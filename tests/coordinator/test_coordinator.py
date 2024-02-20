@@ -30,7 +30,7 @@ class TestCoordinator:
         file_suffix = "txt"
         file_name = f"{file_stem}.{file_suffix}"
         chunks = [metadata.ChunkInfo(chunk_handle=f"{file_stem}_chunk{i}") for i in range(3)]
-        coordinator.files[file_name] = metadata.FileInfo(file_name=file_name, version=1, chunks=chunks)
+        coordinator.filetable[file_name] = metadata.FileInfo(file_name=file_name, version=1, chunks=chunks)
         return coordinator, file_stem, file_suffix, file_name, chunks
 
     def test_register_chunk_server(self, coordinator):
@@ -94,11 +94,11 @@ class TestCoordinator:
 
         # Verify file versioning
         file_name = f"{file_stem}.{file_suffix}"
-        assert coordinator.files[file_name].version == 1, "File versioning failed."
+        assert coordinator.filetable[file_name].version == 1, "File versioning failed."
 
         # Test updating the same file
         new_replicas = coordinator.write_file(file_stem, file_suffix, chunk_num, replica_count)
-        assert coordinator.files[file_name].version == 2, "File versioning on update failed."
+        assert coordinator.filetable[file_name].version == 2, "File versioning on update failed."
         assert new_replicas != replicas, "New write operation did not generate new chunk locations."
     
     def test_get_file(self, setup_chunk_servers):
@@ -149,10 +149,10 @@ class TestCoordinator:
     def test_delete_file(self, setup_files):
         coordinator, file_stem, file_suffix, file_name, chunks = setup_files
         # Ensure file exists before deletion
-        assert file_name in coordinator.files, "File should exist before deletion."
+        assert file_name in coordinator.filetable, "File should exist before deletion."
 
         # Delete the file
         coordinator.delete_file(file_stem, file_suffix)
-        assert file_name not in coordinator.files, "File should be deleted."
+        assert file_name not in coordinator.filetable, "File should be deleted."
         for chunk in chunks:
-            assert chunk.chunk_handle not in coordinator.chunk_locations, "Chunk should be deleted."
+            assert chunk.chunk_handle not in coordinator.chunktable, "Chunk should be deleted."
