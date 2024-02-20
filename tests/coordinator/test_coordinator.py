@@ -22,6 +22,16 @@ class TestCoordinator:
             coordinator.activate_chunk_server(chunk_server)
             # Simulate each server reporting available space and being healthy
         return coordinator
+    
+    @pytest.fixture
+    def setup_files(self, coordinator):
+        # Setup file with chunks for testing
+        file_stem = "test_file"
+        file_suffix = "txt"
+        file_name = f"{file_stem}.{file_suffix}"
+        chunks = [metadata.ChunkInfo(chunk_handle=f"{file_stem}_chunk{i}") for i in range(3)]
+        coordinator.files[file_name] = metadata.FileInfo(file_name=file_name, version=1, chunks=chunks)
+        return coordinator, file_stem, file_suffix, file_name, chunks
 
     def test_register_chunk_server(self, coordinator):
         addr = "127.0.0.1:8000"
@@ -122,3 +132,27 @@ class TestCoordinator:
         for chunk_handle, _ in file_info:
             assert chunk_handle.startswith(file_stem), "Chunk handle does not start with the file stem."
             assert chunk_handle.endswith(file_suffix), "Chunk handle does not end with the file suffix."
+
+    def test_fetch_file_info(self, setup_files):
+        coordinator, file_stem, file_suffix, file_name, chunks = setup_files
+        # Fetch file info for existing file
+        file_info = coordinator.fetch_file_info(file_stem, file_suffix)
+        assert file_info is not None, "Should have fetched file info."
+        assert file_info.file_name == file_name, "Fetched file info has incorrect file name."
+        assert len(file_info.chunks) == 3, "Fetched file info has incorrect number of chunks."
+        assert file_info.chunks == chunks, "Fetched file info has incorrect chunks."
+
+        # Fetch file info for non-existing file
+        non_existing_info = coordinator.fetch_file_info("non_existing_file", "txt")
+        assert non_existing_info is None, "Should return None for non-existing file."
+
+    def test_delete_file(self, setup_files):
+        coordinator, file_stem, file_suffix, file_name, chunks = setup_files
+        # Ensure file exists before deletion
+        assert file_name in coordinator.files, "File should exist before deletion."
+
+        # Delete the file
+        coordinator.delete_file(file_stem, file_suffix)
+        assert file_name not in coordinator.files, "File should be deleted."
+        for chunk in chunks:
+            assert chunk.chunk_handle not in coordinator.chunk_locations, "Chunk should be deleted."

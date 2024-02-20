@@ -272,10 +272,11 @@ class Coordinator:
             file_suffix (str): The suffix of the file
 
         Returns:
-            Dict: A list that each element of the list is a tuple, the first
-                  element of the tuple is the chunk handle, the second element
-                  of the tuple is a list chunk server addresses that contain 
-                  this chunk.
+            Optional[Dict]: A list that each element of the list is a tuple, the 
+                            first element of the tuple is the chunk handle, the 
+                            second element of the tuple is a list chunk server 
+                            addresses that contain this chunk. Return None if
+                            coordinator doesn't maintain target file.
         """
         file_name = f"{file_stem}.{file_suffix}"
         self.logger.info(f"Getting file {file_name}.")
@@ -292,4 +293,58 @@ class Coordinator:
             ]
             chunks_info.append((chunk.chunk_handle, chunk_servers))
 
+        self.logger.info(f"Getting file {file_name} completed.")
         return chunks_info
+    
+    def fetch_file_info(self, file_stem: str, file_suffix: str) -> Optional[metadata.FileInfo]:
+        """Get a file from coordinator.
+
+        Args:
+            file_stem (str): The stem of file name
+            file_suffix (str): The suffix of the file
+
+        Returns:
+            Optional[metadata.FileInfo]: The information of the file. Return None 
+                                         if coordinator doesn't maintain target file.
+        """
+        file_name = f"{file_stem}.{file_suffix}"
+        self.logger.info(f"Fetching file {file_name}'s information.")
+        if file_name not in self.files:
+            self.logger.warning(f"File {file_name} does not exist.")
+            return None
+        
+        self.logger.info(f"Fetching file {file_name}'s information completed.")
+        return self.files[file_name]
+    
+    def delete_file(self, file_stem: str, file_suffix: str) -> None:
+        """
+        Deletes a file and its chunks from the coordinator, chunk servers, and the chunk locations mapping.
+        
+        This method removes the specified file from the coordinator's tracking,
+        discards the chunk handles from each relevant chunk server's set of chunks,
+        and cleans up the chunk locations mapping.
+
+        Args:
+            file_stem (str): The stem part of the file name to be deleted.
+            file_suffix (str): The suffix part of the file name to be deleted.
+
+        If the specified file does not exist, a warning is logged and the method returns without performing any deletion.
+        """
+        file_name = f"{file_stem}.{file_suffix}"
+        self.logger.info(f"Deleting file {file_name}'s information.")
+        if file_name not in self.files:
+            self.logger.warning(f"File {file_name} does not exist.")
+            return
+        
+        file_info = self.files[file_name]
+        for chunk_info in file_info.chunks:
+            # Here, we need to check if the chunk_handle is actually in the chunk_locations dictionary
+            if chunk_info.chunk_handle in self.chunk_locations:
+                chunk_servers = self.chunk_locations[chunk_info.chunk_handle]
+                for chunk_server in chunk_servers:
+                    # Assuming chunk_server.chunks is a set of chunk handles
+                    chunk_server.chunks.discard(chunk_info.chunk_handle)
+                del self.chunk_locations[chunk_info.chunk_handle]
+
+        del self.files[file_name]
+        self.logger.info(f"File {file_name} deleted.")
