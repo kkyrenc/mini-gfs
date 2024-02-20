@@ -280,18 +280,19 @@ class Coordinator:
         """
         file_name = f"{file_stem}.{file_suffix}"
         self.logger.info(f"Getting file {file_name}.")
-        if file_name not in self.files:
-            self.logger.warning(f"File {file_name} does not exist.")
-            return None
-        
-        file_info = self.files[file_name]
-        chunks = file_info.chunks
-        chunks_info = []
-        for chunk in chunks:
-            chunk_servers = [
-                chunk_server.address for chunk_server in self.chunk_locations[chunk.chunk_handle]
-            ]
-            chunks_info.append((chunk.chunk_handle, chunk_servers))
+        with self._lock:
+            if file_name not in self.files:
+                self.logger.warning(f"File {file_name} does not exist.")
+                return None
+            
+            file_info = self.files[file_name]
+            chunks = file_info.chunks
+            chunks_info = []
+            for chunk in chunks:
+                chunk_servers = [
+                    chunk_server.address for chunk_server in self.chunk_locations[chunk.chunk_handle]
+                ]
+                chunks_info.append((chunk.chunk_handle, chunk_servers))
 
         self.logger.info(f"Getting file {file_name} completed.")
         return chunks_info
@@ -309,12 +310,13 @@ class Coordinator:
         """
         file_name = f"{file_stem}.{file_suffix}"
         self.logger.info(f"Fetching file {file_name}'s information.")
-        if file_name not in self.files:
-            self.logger.warning(f"File {file_name} does not exist.")
-            return None
-        
-        self.logger.info(f"Fetching file {file_name}'s information completed.")
-        return self.files[file_name]
+        with self._lock:
+            if file_name not in self.files:
+                self.logger.warning(f"File {file_name} does not exist.")
+                return None
+            
+            self.logger.info(f"Fetching file {file_name}'s information completed.")
+            return self.files[file_name]
     
     def delete_file(self, file_stem: str, file_suffix: str) -> None:
         """
@@ -332,19 +334,21 @@ class Coordinator:
         """
         file_name = f"{file_stem}.{file_suffix}"
         self.logger.info(f"Deleting file {file_name}'s information.")
-        if file_name not in self.files:
-            self.logger.warning(f"File {file_name} does not exist.")
-            return
-        
-        file_info = self.files[file_name]
-        for chunk_info in file_info.chunks:
-            # Here, we need to check if the chunk_handle is actually in the chunk_locations dictionary
-            if chunk_info.chunk_handle in self.chunk_locations:
-                chunk_servers = self.chunk_locations[chunk_info.chunk_handle]
-                for chunk_server in chunk_servers:
-                    # Assuming chunk_server.chunks is a set of chunk handles
-                    chunk_server.chunks.discard(chunk_info.chunk_handle)
-                del self.chunk_locations[chunk_info.chunk_handle]
 
-        del self.files[file_name]
+        with self._lock:
+            if file_name not in self.files:
+                self.logger.warning(f"File {file_name} does not exist.")
+                return
+            
+            file_info = self.files[file_name]
+            for chunk_info in file_info.chunks:
+                # Here, we need to check if the chunk_handle is actually in the chunk_locations dictionary
+                if chunk_info.chunk_handle in self.chunk_locations:
+                    chunk_servers = self.chunk_locations[chunk_info.chunk_handle]
+                    for chunk_server in chunk_servers:
+                        # Assuming chunk_server.chunks is a set of chunk handles
+                        chunk_server.chunks.discard(chunk_info.chunk_handle)
+                    del self.chunk_locations[chunk_info.chunk_handle]
+
+            del self.files[file_name]
         self.logger.info(f"File {file_name} deleted.")
