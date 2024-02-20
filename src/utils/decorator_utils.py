@@ -1,6 +1,6 @@
 import time
 import functools
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Union, Any
 import logging
 
 class DecoratorUtils:
@@ -82,3 +82,27 @@ class DecoratorUtils:
             )
         
         return stats
+    
+    @classmethod
+    def exception_logging_decorator(cls, func: Callable) -> Callable:
+        """
+        A decorator that wraps a function to log and return an error message
+        if the function raises an exception. If the function executes successfully,
+        it returns the function's return value.
+
+        Args:
+            func (Callable): The function to be wrapped.
+
+        Returns:
+            Callable: A wrapper function that adds exception handling and logging.
+        """
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # Catch the exception，log it and return error message
+                error_message = f"Error in '{func.__name__}': {str(e)}"
+                cls.logger.error(error_message)
+                return error_message
+        return wrapper

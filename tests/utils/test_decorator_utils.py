@@ -1,6 +1,7 @@
 import time
 from utils.decorator_utils import DecoratorUtils
 import pytest
+import logging
 
 def test_timing_decorator_records_time():
     @DecoratorUtils.timing_decorator
@@ -45,3 +46,23 @@ def reset_performance_data():
     """A fixture to reset the performance data before each test function is run."""
     DecoratorUtils.performance_data = {}
 
+def test_exception_logging_decorator_handles_exceptions(caplog):
+    caplog.set_level(logging.ERROR)
+
+    @DecoratorUtils.exception_logging_decorator
+    def test_func_raise_exception():
+        """A test function that raises an exception."""
+        raise ValueError("Test exception")
+
+    error_message = test_func_raise_exception()
+    assert "Error in 'test_func_raise_exception': Test exception" in caplog.text
+    assert "Error in 'test_func_raise_exception': Test exception" == error_message
+
+def test_exception_logging_decorator_returns_value():
+    @DecoratorUtils.exception_logging_decorator
+    def test_func_return_value():
+        """A test function that returns a value."""
+        return "Success"
+
+    result = test_func_return_value()
+    assert result == "Success"
