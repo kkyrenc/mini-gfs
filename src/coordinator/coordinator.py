@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 from coordinator import metadata
 from coordinator.consistent_hash import ConsistentHash
 import time
@@ -216,7 +216,19 @@ class Coordinator:
         file_suffix: str,
         chunk_num: int,
         replica: int
-    ) -> Dict[str, str]:
+    ) -> Dict[str, List[str]]:
+        """Write file to coordinator.
+
+        Args:
+            file_stem (str): The stem of file name
+            file_suffix (str): The suffix of the file
+            chunk_num (int): The number of chunks this file contains
+            replica (int): The replica number of this file
+
+        Returns:
+            Dict: A dictionary that map chunk handle to a list of chunk 
+                  server addresses
+        """
         file_name = f"{file_stem}.{file_suffix}"
         self.logger.info(f"Writting file {file_name} with {chunk_num} chunks...")
         with self._lock:
@@ -251,3 +263,33 @@ class Coordinator:
         self.logger.info(f"Chunk locations: {replicas}")
         self.logger.info(f"Writting file {file_name} completed.")
         return replicas
+    
+    def get_file(self, file_stem: str, file_suffix: str) -> Optional[List[Tuple[str, List[str]]]]:
+        """Get a file from coordinator.
+
+        Args:
+            file_stem (str): The stem of file name
+            file_suffix (str): The suffix of the file
+
+        Returns:
+            Dict: A list that each element of the list is a tuple, the first
+                  element of the tuple is the chunk handle, the second element
+                  of the tuple is a list chunk server addresses that contain 
+                  this chunk.
+        """
+        file_name = f"{file_stem}.{file_suffix}"
+        self.logger.info(f"Getting file {file_name}.")
+        if file_name not in self.files:
+            self.logger.warning(f"File {file_name} does not exist.")
+            return None
+        
+        file_info = self.files[file_name]
+        chunks = file_info.chunks
+        chunks_info = []
+        for chunk in chunks:
+            chunk_servers = [
+                chunk_server.address for chunk_server in self.chunk_locations[chunk.chunk_handle]
+            ]
+            chunks_info.append((chunk.chunk_handle, chunk_servers))
+
+        return chunks_info

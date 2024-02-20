@@ -90,3 +90,35 @@ class TestCoordinator:
         new_replicas = coordinator.write_file(file_stem, file_suffix, chunk_num, replica_count)
         assert coordinator.files[file_name].version == 2, "File versioning on update failed."
         assert new_replicas != replicas, "New write operation did not generate new chunk locations."
+    
+    def test_get_file(self, setup_chunk_servers):
+        coordinator = setup_chunk_servers
+        file_stem = "test_get_file"
+        file_suffix = "txt"
+        chunk_num = 3
+        replica_count = 2  # Assuming a smaller replica count for simplicity
+
+        # Write a file to setup initial conditions
+        coordinator.write_file(file_stem, file_suffix, chunk_num, replica_count)
+
+        # Test getting file information
+        file_info = coordinator.get_file(file_stem, file_suffix)
+
+        # Verify that the file information is correctly returned
+        assert file_info is not None, "get_file should return information for an existing file."
+        assert len(file_info) == chunk_num, f"Expected {chunk_num} chunks, got {len(file_info)}."
+
+        # Verify that each chunk has the correct number of replicas
+        for chunk_handle, servers in file_info:
+            assert len(servers) == replica_count, f"Chunk {chunk_handle} should have {replica_count} replicas."
+
+        # Verify that the chunk servers are correctly reported
+        for chunk_handle, servers in file_info:
+            for server_addr in servers:
+                assert server_addr.startswith("127.0.0."), "Chunk server address format is incorrect."
+                assert server_addr.endswith(":8000"), "Chunk server port is incorrect."
+
+        # Verify that the chunk handles are correctly formed
+        for chunk_handle, _ in file_info:
+            assert chunk_handle.startswith(file_stem), "Chunk handle does not start with the file stem."
+            assert chunk_handle.endswith(file_suffix), "Chunk handle does not end with the file suffix."
